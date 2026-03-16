@@ -185,12 +185,14 @@ export default function AvatarModel({ url }: AvatarModelProps) {
 
       // Cornea meshes → transparent gloss, recessed to avoid protrusion
       if (isCorneaName(meshName) || isCorneaName(matName)) {
+        console.warn(`[EYE] Found cornea mesh: "${meshName}" (mat: "${matName}"), guard=${!!(m.userData as Record<string, unknown>).__corneaPrepared}`);
         m.material = corneaMat;
         prepareEyeGeometry(m, false);
         return;
       }
       // Eye meshes → iris/pupil texture, recessed to sit flush in socket
       if (isEyeName(meshName) || isEyeName(matName)) {
+        console.warn(`[EYE] Found eye mesh: "${meshName}" (mat: "${matName}"), guard=${!!(m.userData as Record<string, unknown>).__eyePrepared}`);
         m.material = eyeMat;
         prepareEyeGeometry(m, true);
         return;
