@@ -36,17 +36,15 @@ const SLOT_TO_CATEGORY: Record<string, AssetCategory> = {
 };
 
 /**
- * Prepare an eye/cornea sphere: clone geometry, scale it down, and
- * recess it into the face socket.
+ * Prepare an eye/cornea sphere: clone geometry and replace UVs
+ * with frontal projection for the procedural iris texture.
  *
  * IMPORTANT: uses a flag on the mesh to prevent double-application.
  * useGLTF caches the scene, and React StrictMode re-runs effects,
  * so without a guard the geometry would be modified multiple times.
  *
- * MPFB2 eye spheres (radius ≈0.0105) sit almost flush with the face
- * surface (protrusion ≈0.0006). Scaling to 70% and recessing −0.008
- * in Z tucks them well behind the face so only the portion visible
- * through the eye-socket opening is rendered.
+ * The MPFB2 model positions eyes correctly — we do NOT modify
+ * position or scale. Only UVs are replaced.
  */
 function prepareEyeGeometry(mesh: THREE.Mesh, isEye: boolean): void {
   // Guard: never double-apply (cached scene + strict mode)
@@ -64,44 +62,23 @@ function prepareEyeGeometry(mesh: THREE.Mesh, isEye: boolean): void {
   const center = geo.boundingSphere!.center.clone();
   const origRadius = geo.boundingSphere!.radius;
 
-  // Eye sphere: center Z ≈ 0.134, radius ≈ 0.0105, face socket Z ≈ 0.144.
-  // Original front = 0.1446, protrusion ≈ 0.0006.
-  // Keep original size (scale 1.0) so the sphere fills the socket opening.
-  // Recess −0.003 tucks the front to ~0.1416, safely behind face surface.
-  const scale = 1.0;
-  const zRecess = -0.003;
-
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const z = pos.getZ(i);
-    pos.setXYZ(
-      i,
-      center.x + (x - center.x) * scale,
-      center.y + (y - center.y) * scale,
-      center.z + (z - center.z) * scale + zRecess,
-    );
-  }
-  pos.needsUpdate = true;
-  geo.computeBoundingSphere();
-  geo.computeBoundingBox();
+  // Do NOT modify eye position or scale — the MPFB2 model places them correctly.
+  // Only replace UVs with frontal projection for the procedural iris texture.
 
   console.log(
-    `[EYE] ${mesh.name}: radius ${origRadius.toFixed(5)} → ${geo.boundingSphere!.radius.toFixed(5)}, ` +
-    `center Z ${center.z.toFixed(5)} → ${geo.boundingSphere!.center.z.toFixed(5)}`
+    `[EYE] ${mesh.name}: radius ${origRadius.toFixed(5)}, ` +
+    `center Z ${center.z.toFixed(5)} (unmodified)`
   );
 
   // For eye meshes (not cornea): replace atlas UVs with frontal projection
   if (isEye) {
-    const newPos = geo.attributes.position;
-    geo.computeBoundingSphere();
-    const c = geo.boundingSphere!.center;
-    const r = geo.boundingSphere!.radius;
-    const uvData = new Float32Array(newPos.count * 2);
+    const c = center;
+    const r = origRadius;
+    const uvData = new Float32Array(pos.count * 2);
     const dir = new THREE.Vector3();
 
-    for (let i = 0; i < newPos.count; i++) {
-      dir.set(newPos.getX(i), newPos.getY(i), newPos.getZ(i)).sub(c).divideScalar(r);
+    for (let i = 0; i < pos.count; i++) {
+      dir.set(pos.getX(i), pos.getY(i), pos.getZ(i)).sub(c).divideScalar(r);
       // Frontal projection: +Z face maps to UV center (0.5, 0.5)
       uvData[i * 2] = dir.x * 0.5 + 0.5;
       uvData[i * 2 + 1] = dir.y * 0.5 + 0.5;
