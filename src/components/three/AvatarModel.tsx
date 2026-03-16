@@ -36,77 +36,74 @@ const SLOT_TO_CATEGORY: Record<string, AssetCategory> = {
 };
 
 /**
- * Generate frontal-projection UVs for an eye sphere mesh.
+ * Prepare an eye/cornea sphere: clone geometry, scale it down, and
+ * recess it into the face socket.
  *
- * MPFB2 eye meshes share the body's UV atlas — their UVs are packed
- * into a ~0.003-wide region (effectively a single pixel). We replace
- * them entirely with a frontal spherical projection so the procedural
- * iris/pupil texture (centered at UV 0.5,0.5) maps correctly.
+ * IMPORTANT: uses a flag on the mesh to prevent double-application.
+ * useGLTF caches the scene, and React StrictMode re-runs effects,
+ * so without a guard the geometry would be modified multiple times.
  *
- * The projection treats +Z as "forward" (MPFB2 faces +Z).
- * Each vertex is projected from the sphere center onto a plane,
- * giving circular UVs where the front pole = (0.5, 0.5).
+ * MPFB2 eye spheres (radius ≈0.0105) sit almost flush with the face
+ * surface (protrusion ≈0.0006). Scaling to 70% and recessing −0.008
+ * in Z tucks them well behind the face so only the portion visible
+ * through the eye-socket opening is rendered.
  */
-/**
- * Scale down and recess an eye/cornea sphere so it sits flush within
- * the face socket instead of protruding.  MPFB2 eye spheres poke out
- * by ~0.0006 units; scaling to 88% and pushing back −0.003 in local Z
- * tucks them in while keeping the iris visible through the eyelid opening.
- */
-function recessEyeSphere(mesh: THREE.Mesh): void {
+function prepareEyeGeometry(mesh: THREE.Mesh, isEye: boolean): void {
+  // Guard: never double-apply (cached scene + strict mode)
+  const tag = isEye ? '__eyePrepared' : '__corneaPrepared';
+  if ((mesh.userData as Record<string, unknown>)[tag]) return;
+  (mesh.userData as Record<string, unknown>)[tag] = true;
+
+  // Clone so we don't mutate the cached GLB geometry
+  mesh.geometry = mesh.geometry.clone();
   const geo = mesh.geometry;
   const pos = geo.attributes.position;
   if (!pos) return;
 
   geo.computeBoundingSphere();
   const center = geo.boundingSphere!.center.clone();
+  const origRadius = geo.boundingSphere!.radius;
 
-  const scale = 0.88;
+  const scale = 0.70;
+  const zRecess = -0.008;
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
     const z = pos.getZ(i);
-    // Scale toward sphere center
     pos.setXYZ(
       i,
       center.x + (x - center.x) * scale,
       center.y + (y - center.y) * scale,
-      center.z + (z - center.z) * scale - 0.003,
+      center.z + (z - center.z) * scale + zRecess,
     );
   }
   pos.needsUpdate = true;
   geo.computeBoundingSphere();
   geo.computeBoundingBox();
-}
 
-function generateEyeUVs(mesh: THREE.Mesh): void {
-  const geo = mesh.geometry;
-  const pos = geo.attributes.position;
-  if (!pos) return;
+  console.log(
+    `[EYE] ${mesh.name}: radius ${origRadius.toFixed(5)} → ${geo.boundingSphere!.radius.toFixed(5)}, ` +
+    `center Z ${center.z.toFixed(5)} → ${geo.boundingSphere!.center.z.toFixed(5)}`
+  );
 
-  // Compute sphere center from geometry bounding sphere
-  geo.computeBoundingSphere();
-  const center = geo.boundingSphere!.center;
-  const radius = geo.boundingSphere!.radius;
+  // For eye meshes (not cornea): replace atlas UVs with frontal projection
+  if (isEye) {
+    const newPos = geo.attributes.position;
+    geo.computeBoundingSphere();
+    const c = geo.boundingSphere!.center;
+    const r = geo.boundingSphere!.radius;
+    const uvData = new Float32Array(newPos.count * 2);
+    const dir = new THREE.Vector3();
 
-  const uvData = new Float32Array(pos.count * 2);
-  const dir = new THREE.Vector3();
-
-  for (let i = 0; i < pos.count; i++) {
-    // Direction from center to vertex (normalized)
-    dir.set(pos.getX(i), pos.getY(i), pos.getZ(i)).sub(center).divideScalar(radius);
-
-    // Frontal projection: map X,Y of the normalized direction to UV
-    // Front of eye (+Z) maps to center (0.5, 0.5)
-    // Edges map to the periphery
-    const u = dir.x * 0.5 + 0.5;
-    const v = dir.y * 0.5 + 0.5;
-    uvData[i * 2] = u;
-    uvData[i * 2 + 1] = v;
+    for (let i = 0; i < newPos.count; i++) {
+      dir.set(newPos.getX(i), newPos.getY(i), newPos.getZ(i)).sub(c).divideScalar(r);
+      // Frontal projection: +Z face maps to UV center (0.5, 0.5)
+      uvData[i * 2] = dir.x * 0.5 + 0.5;
+      uvData[i * 2 + 1] = dir.y * 0.5 + 0.5;
+    }
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvData, 2));
   }
-
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvData, 2));
 }
 
 interface LoadedAsset {
@@ -153,7 +150,7 @@ export default function AvatarModel({ url }: AvatarModelProps) {
       metalness: 0.0,
       clearcoat: 0.2,
       clearcoatRoughness: 0.15,
-      side: THREE.DoubleSide,
+      side: THREE.FrontSide,
     });
     eyeMatRef.current = eyeMat;
 
@@ -189,16 +186,13 @@ export default function AvatarModel({ url }: AvatarModelProps) {
       // Cornea meshes → transparent gloss, recessed to avoid protrusion
       if (isCorneaName(meshName) || isCorneaName(matName)) {
         m.material = corneaMat;
-        recessEyeSphere(m);
+        prepareEyeGeometry(m, false);
         return;
       }
       // Eye meshes → iris/pupil texture, recessed to sit flush in socket
       if (isEyeName(meshName) || isEyeName(matName)) {
         m.material = eyeMat;
-        recessEyeSphere(m);
-        // MPFB2 eye meshes share the body UV atlas (tiny ~0.003 region).
-        // Replace with frontal spherical UVs so iris texture maps correctly.
-        generateEyeUVs(m);
+        prepareEyeGeometry(m, true);
         return;
       }
       // Multi-material fallback (body mesh with eye material slot)
