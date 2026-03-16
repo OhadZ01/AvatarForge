@@ -35,6 +35,45 @@ const SLOT_TO_CATEGORY: Record<string, AssetCategory> = {
   accessory: 'accessories',
 };
 
+/**
+ * Remap eye mesh UVs from a tiny UV atlas region to full [0,1] range.
+ * MPFB2 eye meshes share the body's UV atlas — their UVs cluster in a ~0.003 span.
+ * This remaps them so the procedural iris texture (centered at 0.5,0.5) works correctly.
+ */
+function remapEyeUVs(mesh: THREE.Mesh): void {
+  const uv = mesh.geometry.attributes.uv;
+  if (!uv) return;
+
+  // Find UV bounding box
+  let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+  for (let i = 0; i < uv.count; i++) {
+    const u = uv.getX(i);
+    const v = uv.getY(i);
+    if (u < minU) minU = u;
+    if (u > maxU) maxU = u;
+    if (v < minV) minV = v;
+    if (v > maxV) maxV = v;
+  }
+
+  const spanU = maxU - minU;
+  const spanV = maxV - minV;
+
+  // Only remap if UVs are in a tiny region (atlas-packed)
+  if (spanU > 0.1 && spanV > 0.1) return;
+
+  // Remap from [min,max] → [0,1]
+  const centerU = (minU + maxU) / 2;
+  const centerV = (minV + maxV) / 2;
+  const span = Math.max(spanU, spanV) || 0.001;
+
+  for (let i = 0; i < uv.count; i++) {
+    const u = (uv.getX(i) - centerU) / span + 0.5;
+    const v = (uv.getY(i) - centerV) / span + 0.5;
+    uv.setXY(i, u, v);
+  }
+  uv.needsUpdate = true;
+}
+
 interface LoadedAsset {
   slotKey: string;
   assetId: string;
@@ -120,6 +159,9 @@ export default function AvatarModel({ url }: AvatarModelProps) {
       // Eye meshes → iris/pupil texture
       if (isEyeName(meshName) || isEyeName(matName)) {
         m.material = eyeMat;
+        // MPFB2 eye meshes share the body UV atlas — their UVs are in a tiny region.
+        // Remap UVs to [0,1] centered on the iris so the procedural texture maps correctly.
+        remapEyeUVs(m);
         return;
       }
       // Multi-material fallback (body mesh with eye material slot)
