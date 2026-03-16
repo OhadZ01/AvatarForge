@@ -65,11 +65,11 @@ function prepareEyeGeometry(mesh: THREE.Mesh, isEye: boolean): void {
   const origRadius = geo.boundingSphere!.radius;
 
   // Eye sphere: center Z ≈ 0.134, radius ≈ 0.0105, face socket Z ≈ 0.144.
-  // Original front = 0.1446, protrusion = 0.0006.
-  // Scale 0.92 → radius 0.00966, recess −0.0015 → center 0.1327,
-  // front = 0.1423 — about 0.0017 behind face (flush, no protrusion).
-  const scale = 0.92;
-  const zRecess = -0.0015;
+  // Original front = 0.1446, protrusion ≈ 0.0006.
+  // Keep original size (scale 1.0) so the sphere fills the socket opening.
+  // Recess −0.003 tucks the front to ~0.1416, safely behind face surface.
+  const scale = 1.0;
+  const zRecess = -0.003;
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
