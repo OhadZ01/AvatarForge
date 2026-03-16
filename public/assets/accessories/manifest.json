@@ -1,0 +1,96 @@
+{
+  "category": "accessories",
+  "items": [
+    {
+      "id": "fedora01",
+      "name": "Fedora Hat",
+      "file": "fedora01.glb",
+      "thumbnail": "fedora01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/fedora01",
+      "tags": [
+        "hat",
+        "headwear"
+      ]
+    },
+    {
+      "id": "shoes01",
+      "name": "Shoes Classic",
+      "file": "shoes01.glb",
+      "thumbnail": "shoes01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/shoes01",
+      "tags": [
+        "shoes",
+        "footwear"
+      ]
+    },
+    {
+      "id": "shoes02",
+      "name": "Shoes Sport",
+      "file": "shoes02.glb",
+      "thumbnail": "shoes02.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/shoes02",
+      "tags": [
+        "shoes",
+        "sport"
+      ]
+    },
+    {
+      "id": "shoes03",
+      "name": "Shoes Boots",
+      "file": "shoes03.glb",
+      "thumbnail": "shoes03.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/shoes03",
+      "tags": [
+        "shoes",
+        "boots"
+      ]
+    },
+    {
+      "id": "shoes04",
+      "name": "Shoes Formal",
+      "file": "shoes04.glb",
+      "thumbnail": "shoes04.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/shoes04",
+      "tags": [
+        "shoes",
+        "formal"
+      ]
+    },
+    {
+      "id": "shoes05",
+      "name": "Shoes Casual",
+      "file": "shoes05.glb",
+      "thumbnail": "shoes05.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/shoes05",
+      "tags": [
+        "shoes",
+        "casual"
+      ]
+    },
+    {
+      "id": "shoes06",
+      "name": "Shoes Sneakers",
+      "file": "shoes06.glb",
+      "thumbnail": "shoes06.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/shoes06",
+      "tags": [
+        "shoes",
+        "sneakers"
+      ]
+    }
+  ]
+}

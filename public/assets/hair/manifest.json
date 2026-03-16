@@ -1,0 +1,185 @@
+{
+  "category": "hair",
+  "items": [
+    {
+      "id": "afro01",
+      "name": "Afro",
+      "file": "afro01.glb",
+      "thumbnail": "afro01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "contract_id": "legacy_makehuman_v1",
+      "bind_pose": "legacy_static",
+      "lods": [
+        "lod0"
+      ],
+      "mh_dir": "hair/afro01",
+      "tags": [
+        "hair",
+        "afro"
+      ]
+    },
+    {
+      "id": "bob01",
+      "name": "Bob",
+      "file": "bob01.glb",
+      "thumbnail": "bob01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "contract_id": "legacy_makehuman_v1",
+      "bind_pose": "legacy_static",
+      "lods": [
+        "lod0"
+      ],
+      "mh_dir": "hair/bob01",
+      "tags": [
+        "hair",
+        "bob"
+      ]
+    },
+    {
+      "id": "bob02",
+      "name": "Bob Style 2",
+      "file": "bob02.glb",
+      "thumbnail": "bob02.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "contract_id": "legacy_makehuman_v1",
+      "bind_pose": "legacy_static",
+      "lods": [
+        "lod0"
+      ],
+      "mh_dir": "hair/bob02",
+      "tags": [
+        "hair",
+        "bob"
+      ]
+    },
+    {
+      "id": "braid01",
+      "name": "Braid",
+      "file": "braid01.glb",
+      "thumbnail": "braid01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "contract_id": "legacy_makehuman_v1",
+      "bind_pose": "legacy_static",
+      "lods": [
+        "lod0"
+      ],
+      "mh_dir": "hair/braid01",
+      "tags": [
+        "hair",
+        "braid"
+      ]
+    },
+    {
+      "id": "long01",
+      "name": "Long Hair",
+      "file": "long01.glb",
+      "thumbnail": "long01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "contract_id": "legacy_makehuman_v1",
+      "bind_pose": "legacy_static",
+      "lods": [
+        "lod0"
+      ],
+      "mh_dir": "hair/long01",
+      "tags": [
+        "hair",
+        "long"
+      ]
+    },
+    {
+      "id": "ponytail01",
+      "name": "Ponytail",
+      "file": "ponytail01.glb",
+      "thumbnail": "ponytail01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "contract_id": "legacy_makehuman_v1",
+      "bind_pose": "legacy_static",
+      "lods": [
+        "lod0"
+      ],
+      "mh_dir": "hair/ponytail01",
+      "tags": [
+        "hair",
+        "ponytail"
+      ]
+    },
+    {
+      "id": "short01",
+      "name": "Short Cut",
+      "file": "short01.glb",
+      "thumbnail": "short01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "contract_id": "legacy_makehuman_v1",
+      "bind_pose": "legacy_static",
+      "lods": [
+        "lod0"
+      ],
+      "mh_dir": "hair/short01",
+      "tags": [
+        "hair",
+        "short"
+      ]
+    },
+    {
+      "id": "short02",
+      "name": "Short Style 2",
+      "file": "short02.glb",
+      "thumbnail": "short02.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "contract_id": "legacy_makehuman_v1",
+      "bind_pose": "legacy_static",
+      "lods": [
+        "lod0"
+      ],
+      "mh_dir": "hair/short02",
+      "tags": [
+        "hair",
+        "short"
+      ]
+    },
+    {
+      "id": "short03",
+      "name": "Short Style 3",
+      "file": "short03.glb",
+      "thumbnail": "short03.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "contract_id": "legacy_makehuman_v1",
+      "bind_pose": "legacy_static",
+      "lods": [
+        "lod0"
+      ],
+      "mh_dir": "hair/short03",
+      "tags": [
+        "hair",
+        "short"
+      ]
+    },
+    {
+      "id": "short04",
+      "name": "Short Style 4",
+      "file": "short04.glb",
+      "thumbnail": "short04.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "contract_id": "legacy_makehuman_v1",
+      "bind_pose": "legacy_static",
+      "lods": [
+        "lod0"
+      ],
+      "mh_dir": "hair/short04",
+      "tags": [
+        "hair",
+        "short"
+      ]
+    }
+  ]
+}

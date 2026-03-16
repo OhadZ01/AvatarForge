@@ -1,0 +1,75 @@
+{
+  "category": "bottoms",
+  "items": [
+    {
+      "id": "sport-pants01",
+      "name": "Sport Pants",
+      "file": "sport-pants01.glb",
+      "thumbnail": "sport-pants01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/female_sportsuit01",
+      "tags": [
+        "bottom",
+        "female",
+        "sport"
+      ]
+    },
+    {
+      "id": "casual-pants01",
+      "name": "Casual Pants",
+      "file": "casual-pants01.glb",
+      "thumbnail": "casual-pants01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/male_casualsuit04",
+      "tags": [
+        "bottom",
+        "male",
+        "casual"
+      ]
+    },
+    {
+      "id": "casual-pants02",
+      "name": "Casual Pants 2",
+      "file": "casual-pants02.glb",
+      "thumbnail": "casual-pants02.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/male_casualsuit05",
+      "tags": [
+        "bottom",
+        "male",
+        "casual"
+      ]
+    },
+    {
+      "id": "casual-pants03",
+      "name": "Casual Pants 3",
+      "file": "casual-pants03.glb",
+      "thumbnail": "casual-pants03.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/male_casualsuit06",
+      "tags": [
+        "bottom",
+        "male",
+        "casual"
+      ]
+    },
+    {
+      "id": "work-pants01",
+      "name": "Work Pants",
+      "file": "work-pants01.glb",
+      "thumbnail": "work-pants01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/male_worksuit01",
+      "tags": [
+        "bottom",
+        "male",
+        "workwear"
+      ]
+    }
+  ]
+}

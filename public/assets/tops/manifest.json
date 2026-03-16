@@ -1,0 +1,103 @@
+{
+  "category": "tops",
+  "items": [
+    {
+      "id": "f-casualsuit01",
+      "name": "Casual Blouse",
+      "file": "f-casualsuit01.glb",
+      "thumbnail": "f-casualsuit01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/female_casualsuit01",
+      "tags": [
+        "top",
+        "female",
+        "casual"
+      ]
+    },
+    {
+      "id": "f-casualsuit02",
+      "name": "Casual Blouse 2",
+      "file": "f-casualsuit02.glb",
+      "thumbnail": "f-casualsuit02.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/female_casualsuit02",
+      "tags": [
+        "top",
+        "female",
+        "casual"
+      ]
+    },
+    {
+      "id": "f-elegant01",
+      "name": "Elegant Top",
+      "file": "f-elegant01.glb",
+      "thumbnail": "f-elegant01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/female_elegantsuit01",
+      "tags": [
+        "top",
+        "female",
+        "formal"
+      ]
+    },
+    {
+      "id": "casualsuit01",
+      "name": "Casual Shirt",
+      "file": "casualsuit01.glb",
+      "thumbnail": "casualsuit01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/male_casualsuit01",
+      "tags": [
+        "top",
+        "male",
+        "casual"
+      ]
+    },
+    {
+      "id": "casualsuit02",
+      "name": "Casual Top 2",
+      "file": "casualsuit02.glb",
+      "thumbnail": "casualsuit02.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/male_casualsuit02",
+      "tags": [
+        "top",
+        "male",
+        "casual"
+      ]
+    },
+    {
+      "id": "casualsuit03",
+      "name": "Casual Top 3",
+      "file": "casualsuit03.glb",
+      "thumbnail": "casualsuit03.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/male_casualsuit03",
+      "tags": [
+        "top",
+        "male",
+        "casual"
+      ]
+    },
+    {
+      "id": "elegant01",
+      "name": "Dress Shirt",
+      "file": "elegant01.glb",
+      "thumbnail": "elegant01.png",
+      "source": "makehuman-base",
+      "license": "CC0",
+      "mh_dir": "clothes/male_elegantsuit01",
+      "tags": [
+        "top",
+        "male",
+        "formal"
+      ]
+    }
+  ]
+}
