@@ -18,10 +18,13 @@ export function generateEyeTexture(irisColorHex: string, size = 256): THREE.Data
   const iG = Math.round(irisColor.g * 255);
   const iB = Math.round(irisColor.b * 255);
 
-  // Iris proportions tuned for MPFB2 spherical eye meshes (UVs span full [0,1])
-  const irisRadius = size * 0.22;
-  const pupilRadius = irisRadius * 0.35;
-  const limbalRadius = irisRadius * 1.10;
+  // Iris proportions tuned for MPFB2 spherical eye meshes with frontal projection UVs.
+  // The full sphere maps to [0,1] UV but eyelids hide the edges, so the iris needs
+  // to be large (~45% of texture) to appear anatomically correct (iris ≈ 50% of
+  // visible eye between eyelids).
+  const irisRadius = size * 0.45;
+  const pupilRadius = irisRadius * 0.32;
+  const limbalRadius = irisRadius * 1.08;
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
