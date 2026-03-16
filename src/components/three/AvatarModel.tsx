@@ -147,6 +147,13 @@ export default function AvatarModel({ url }: AvatarModelProps) {
     eyeMatRef.current.map = newTex;
     eyeMatRef.current.needsUpdate = true;
     oldTex?.dispose();
+    // Dispose the new texture if unmounted during this effect
+    return () => {
+      // Only dispose if this texture is no longer the current one
+      if (eyeTexRef.current !== newTex) {
+        newTex.dispose();
+      }
+    };
   }, [colors.eye]);
 
   // ─── Relaxed Pose (once) ────────────────────────────
@@ -383,6 +390,13 @@ export default function AvatarModel({ url }: AvatarModelProps) {
       if (existing && existing.assetId === assetId) continue;
       loadAndAttachRef.current(slotKey, assetId, generation);
     }
+
+    // Cleanup on unmount: invalidate generation and clear loading indicators
+    return () => {
+      // Increment to invalidate any in-flight asset loads from this effect
+      loadGenRef.current = generation + 1;
+      useUIStore.getState().clearAllLoadingAssets();
+    };
   }, [slots, avatarMesh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

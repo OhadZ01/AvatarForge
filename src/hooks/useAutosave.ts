@@ -11,7 +11,7 @@ const AUTOSAVE_INTERVAL = 3000;
  * Also loads draft on mount if one exists.
  */
 export function useAutosave() {
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Start fresh on each page load — don't restore draft
   // Users can save/load via Presets panel if they want persistence

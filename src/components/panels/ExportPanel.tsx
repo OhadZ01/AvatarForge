@@ -23,7 +23,7 @@ export default function ExportPanel() {
       const dataUrl = canvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = `avatar-${config.name.replace(/\s+/g, '-').toLowerCase()}.png`;
+      a.download = `avatar-${config.name.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase()}.png`;
       a.click();
       setScreenshotStatus('done');
       setTimeout(() => setScreenshotStatus('idle'), 2000);

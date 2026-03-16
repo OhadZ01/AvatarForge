@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import Toolbar from '@/components/layout/Toolbar';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAutosave, useKeyboardShortcuts } from '@/hooks';
 
 // Lazy load the 3D scene — it pulls in Three.js which is heavy
@@ -38,7 +39,9 @@ export default function AvatarCreatorPage() {
         {/* 3D Viewport — hero area */}
         <div className="flex-1 relative bg-surface-950">
           <Toolbar />
-          <AvatarScene modelUrl={BASE_MODEL_URL} />
+          <ErrorBoundary>
+            <AvatarScene modelUrl={BASE_MODEL_URL} />
+          </ErrorBoundary>
 
           {/* Gradient overlays for premium look */}
           <div className="pointer-events-none absolute inset-0">

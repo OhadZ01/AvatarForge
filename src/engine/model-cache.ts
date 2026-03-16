@@ -11,15 +11,26 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
  */
 
 const loader = new GLTFLoader();
+const DEFAULT_LOAD_TIMEOUT_MS = 30_000;
 
 /** Load a GLB and return the scene directly. */
-export async function loadGLB(url: string): Promise<THREE.Group> {
+export async function loadGLB(url: string, timeoutMs = DEFAULT_LOAD_TIMEOUT_MS): Promise<THREE.Group> {
   return new Promise<THREE.Group>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(`[ModelCache] Loading timed out after ${timeoutMs}ms: ${url}`));
+    }, timeoutMs);
+
     loader.load(
       url,
-      (gltf) => resolve(gltf.scene),
+      (gltf) => {
+        clearTimeout(timeoutId);
+        resolve(gltf.scene);
+      },
       undefined,
-      reject,
+      (error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      },
     );
   });
 }

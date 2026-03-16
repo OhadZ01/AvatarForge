@@ -183,8 +183,10 @@ export function syncClothingBodyMorphs(
   });
 }
 
-/** Dispose all geometries and materials in a scene graph */
+/** Dispose all geometries, materials, and textures in a scene graph */
 export function disposeSceneGraph(root: THREE.Object3D): void {
+  const disposedTextures = new Set<THREE.Texture>();
+
   root.traverse((child) => {
     const mesh = child as THREE.Mesh;
     if (mesh.isMesh) {
@@ -192,11 +194,20 @@ export function disposeSceneGraph(root: THREE.Object3D): void {
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       for (const mat of materials) {
         if (mat) {
+          // Dispose all texture properties on the material
           const stdMat = mat as THREE.MeshStandardMaterial;
-          stdMat.map?.dispose();
-          stdMat.normalMap?.dispose();
-          stdMat.roughnessMap?.dispose();
-          stdMat.metalnessMap?.dispose();
+          const textureKeys = [
+            'map', 'normalMap', 'roughnessMap', 'metalnessMap',
+            'aoMap', 'emissiveMap', 'bumpMap', 'displacementMap',
+            'alphaMap', 'envMap', 'lightMap',
+          ] as const;
+          for (const key of textureKeys) {
+            const tex = (stdMat as any)[key] as THREE.Texture | undefined; // dynamic texture property access
+            if (tex && !disposedTextures.has(tex)) {
+              tex.dispose();
+              disposedTextures.add(tex);
+            }
+          }
           mat.dispose();
         }
       }

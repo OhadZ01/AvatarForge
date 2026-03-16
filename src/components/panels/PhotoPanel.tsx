@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, Upload, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAvatarStore } from '@/store';
 import { analyzeFace, checkOllamaStatus } from '@/services/face-analysis';
 import { flameFitFromPhoto, checkFlameBackend } from '@/services/flame-service';
 import { mapFaceToMorphs } from '@/domain/face-parameter-mapping';
 import type { FaceAnalysisResult } from '@/services/face-analysis';
-import type { EthnicityMorphs } from '@/domain/schemas';
+import type { EthnicityMorphs, ColorConfig } from '@/domain/schemas';
 
 type Status = 'idle' | 'checking' | 'analyzing' | 'done' | 'error';
 type AnalysisMethod = 'flame' | 'ollama';
@@ -25,11 +25,23 @@ export default function PhotoPanel() {
   const setBodyDetailMorphs = useAvatarStore((s) => s.setBodyDetailMorphs);
   const setColors = useAvatarStore((s) => s.setColors);
 
+  // Revoke blob URL on cleanup or when preview changes to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
   const handleFileSelect = useCallback(async (file: File) => {
     setError(null);
     setResult(null);
     setMethod(null);
 
+    // Revoke previous blob URL before creating a new one
+    setPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     const url = URL.createObjectURL(file);
     setPreview(url);
 
@@ -54,14 +66,25 @@ export default function PhotoPanel() {
           setBodyDetailMorphs(flameResult.bodyDetailMorphs);
         }
         if (flameResult.colors) {
-          setColors(flameResult.colors as { skin: string; hair: string; eye: string });
+          const validColors: Partial<ColorConfig> = {};
+          if (flameResult.colors.skin) validColors.skin = flameResult.colors.skin;
+          if (flameResult.colors.hair) validColors.hair = flameResult.colors.hair;
+          if (flameResult.colors.eye) validColors.eye = flameResult.colors.eye;
+          setColors(validColors);
         }
         // Create a pseudo-result for display
+        const genderValue = typeof flameResult.ethnicityMorphs?.masculine === 'number'
+          ? flameResult.ethnicityMorphs.masculine
+          : 0.5;
         setResult({
           ethnicity: { african: 0, asian: 0, caucasian: 0 },
-          gender: flameResult.ethnicityMorphs?.masculine || 0.5,
+          gender: genderValue,
           age: 30,
-          proportions: {} as FaceAnalysisResult['proportions'],
+          proportions: {
+            face_width: 0.5, jaw_width: 0.5, forehead_height: 0.5,
+            cheekbone_prominence: 0.5, chin_length: 0.5, nose_width: 0.5,
+            nose_length: 0.5, eye_spacing: 0.5, eye_size: 0.5, lip_thickness: 0.5,
+          },
           colors: {
             skin: flameResult.colors?.skin || '#c8956c',
             eye: flameResult.colors?.eye || '#5b7553',

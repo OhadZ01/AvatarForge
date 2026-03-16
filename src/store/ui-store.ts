@@ -27,6 +27,7 @@ interface UIState {
   setBaseModelLoading: (loading: boolean) => void;
   addLoadingAsset: (id: string) => void;
   removeLoadingAsset: (id: string) => void;
+  clearAllLoadingAssets: () => void;
   openModal: (id: string) => void;
   closeModal: () => void;
 }
@@ -58,6 +59,7 @@ export const useUIStore = create<UIState>()((set) => ({
       next.delete(id);
       return { loadingAssets: next };
     }),
+  clearAllLoadingAssets: () => set({ loadingAssets: new Set() }),
   openModal: (id) => set({ activeModal: id }),
   closeModal: () => set({ activeModal: null }),
 }));

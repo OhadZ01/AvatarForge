@@ -137,15 +137,12 @@ export function autoSkinStaticMeshes(
       avatarMesh.skeleton.boneInverses,
     );
 
-    // Replace the mesh in the scene graph
-    const index = parent.children.indexOf(mesh);
-    if (index !== -1) {
-      parent.children[index] = skinnedMesh;
-      skinnedMesh.parent = parent;
-      mesh.parent = null;
-    }
+    // Replace the mesh in the scene graph using proper THREE.js API
+    // (directly mutating .children and .parent bypasses internal bookkeeping)
+    parent.remove(mesh);
+    parent.add(skinnedMesh);
 
-    // Dispose the old mesh geometry (material is shared)
+    // Dispose the old mesh geometry (material is shared, skinnedMesh uses a clone)
     mesh.geometry.dispose();
 
     console.log(

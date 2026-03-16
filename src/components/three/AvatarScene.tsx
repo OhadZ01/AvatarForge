@@ -21,7 +21,7 @@ function Loader() {
 
 interface SceneContentProps {
   modelUrl: string;
-  controlsRef: React.RefObject<any>;
+  controlsRef: React.RefObject<any>; // OrbitControls type from drei is complex
 }
 
 function SceneContent({ modelUrl, controlsRef }: SceneContentProps) {
@@ -76,7 +76,7 @@ interface AvatarSceneProps {
 }
 
 export default function AvatarScene({ modelUrl, className = '' }: AvatarSceneProps) {
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<any>(null); // OrbitControls type from drei
   const cameraPreset = useUIStore((s) => s.cameraPreset);
 
   // Animate camera to preset position
@@ -94,6 +94,7 @@ export default function AvatarScene({ modelUrl, className = '' }: AvatarScenePro
     const startTarget = controls.target.clone();
     const startTime = performance.now();
     const duration = 600;
+    let rafId: number;
 
     function animate() {
       const elapsed = performance.now() - startTime;
@@ -104,10 +105,15 @@ export default function AvatarScene({ modelUrl, className = '' }: AvatarScenePro
       controls.target.lerpVectors(startTarget, targetLookAt, ease);
       controls.update();
 
-      if (t < 1) requestAnimationFrame(animate);
+      if (t < 1) rafId = requestAnimationFrame(animate);
     }
 
     animate();
+
+    // Cancel any pending animation frame on cleanup
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, [cameraPreset]);
 
   return (

@@ -5,22 +5,17 @@ import type { RootState } from '@react-three/fiber';
  * Cleanly isolated from UI code — takes a gl context and returns a blob.
  */
 
-export function captureScreenshot(gl: RootState['gl'], width = 1920, height = 1080): Promise<Blob> {
+export function captureScreenshot(gl: RootState['gl']): Promise<Blob> {
   return new Promise((resolve, reject) => {
     try {
-      // Force a render at the desired resolution
       const canvas = gl.domElement;
-      const dataUrl = canvas.toDataURL('image/png');
-
-      // Convert data URL to blob
-      const byteString = atob(dataUrl.split(',')[1]);
-      const mimeString = dataUrl.split(',')[0].split(':')[1].split(';')[0];
-      const ab = new ArrayBuffer(byteString.length);
-      const ia = new Uint8Array(ab);
-      for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-      }
-      resolve(new Blob([ab], { type: mimeString }));
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to capture screenshot: toBlob returned null'));
+        }
+      }, 'image/png');
     } catch (err) {
       reject(err);
     }

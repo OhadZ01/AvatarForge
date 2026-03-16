@@ -88,7 +88,7 @@ export function exportConfigAsJson(config: AvatarConfig): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `avatar-${config.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+  a.download = `avatar-${config.name.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase()}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }
