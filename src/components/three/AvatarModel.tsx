@@ -36,42 +36,44 @@ const SLOT_TO_CATEGORY: Record<string, AssetCategory> = {
 };
 
 /**
- * Remap eye mesh UVs from a tiny UV atlas region to full [0,1] range.
- * MPFB2 eye meshes share the body's UV atlas — their UVs cluster in a ~0.003 span.
- * This remaps them so the procedural iris texture (centered at 0.5,0.5) works correctly.
+ * Generate frontal-projection UVs for an eye sphere mesh.
+ *
+ * MPFB2 eye meshes share the body's UV atlas — their UVs are packed
+ * into a ~0.003-wide region (effectively a single pixel). We replace
+ * them entirely with a frontal spherical projection so the procedural
+ * iris/pupil texture (centered at UV 0.5,0.5) maps correctly.
+ *
+ * The projection treats +Z as "forward" (MPFB2 faces +Z).
+ * Each vertex is projected from the sphere center onto a plane,
+ * giving circular UVs where the front pole = (0.5, 0.5).
  */
-function remapEyeUVs(mesh: THREE.Mesh): void {
-  const uv = mesh.geometry.attributes.uv;
-  if (!uv) return;
+function generateEyeUVs(mesh: THREE.Mesh): void {
+  const geo = mesh.geometry;
+  const pos = geo.attributes.position;
+  if (!pos) return;
 
-  // Find UV bounding box
-  let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
-  for (let i = 0; i < uv.count; i++) {
-    const u = uv.getX(i);
-    const v = uv.getY(i);
-    if (u < minU) minU = u;
-    if (u > maxU) maxU = u;
-    if (v < minV) minV = v;
-    if (v > maxV) maxV = v;
+  // Compute sphere center from geometry bounding sphere
+  geo.computeBoundingSphere();
+  const center = geo.boundingSphere!.center;
+  const radius = geo.boundingSphere!.radius;
+
+  const uvData = new Float32Array(pos.count * 2);
+  const dir = new THREE.Vector3();
+
+  for (let i = 0; i < pos.count; i++) {
+    // Direction from center to vertex (normalized)
+    dir.set(pos.getX(i), pos.getY(i), pos.getZ(i)).sub(center).divideScalar(radius);
+
+    // Frontal projection: map X,Y of the normalized direction to UV
+    // Front of eye (+Z) maps to center (0.5, 0.5)
+    // Edges map to the periphery
+    const u = dir.x * 0.5 + 0.5;
+    const v = dir.y * 0.5 + 0.5;
+    uvData[i * 2] = u;
+    uvData[i * 2 + 1] = v;
   }
 
-  const spanU = maxU - minU;
-  const spanV = maxV - minV;
-
-  // Only remap if UVs are in a tiny region (atlas-packed)
-  if (spanU > 0.1 && spanV > 0.1) return;
-
-  // Remap from [min,max] → [0,1]
-  const centerU = (minU + maxU) / 2;
-  const centerV = (minV + maxV) / 2;
-  const span = Math.max(spanU, spanV) || 0.001;
-
-  for (let i = 0; i < uv.count; i++) {
-    const u = (uv.getX(i) - centerU) / span + 0.5;
-    const v = (uv.getY(i) - centerV) / span + 0.5;
-    uv.setXY(i, u, v);
-  }
-  uv.needsUpdate = true;
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvData, 2));
 }
 
 interface LoadedAsset {
@@ -159,9 +161,9 @@ export default function AvatarModel({ url }: AvatarModelProps) {
       // Eye meshes → iris/pupil texture
       if (isEyeName(meshName) || isEyeName(matName)) {
         m.material = eyeMat;
-        // MPFB2 eye meshes share the body UV atlas — their UVs are in a tiny region.
-        // Remap UVs to [0,1] centered on the iris so the procedural texture maps correctly.
-        remapEyeUVs(m);
+        // MPFB2 eye meshes share the body UV atlas (tiny ~0.003 region).
+        // Replace with frontal spherical UVs so iris texture maps correctly.
+        generateEyeUVs(m);
         return;
       }
       // Multi-material fallback (body mesh with eye material slot)
