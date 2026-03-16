@@ -47,6 +47,39 @@ const SLOT_TO_CATEGORY: Record<string, AssetCategory> = {
  * Each vertex is projected from the sphere center onto a plane,
  * giving circular UVs where the front pole = (0.5, 0.5).
  */
+/**
+ * Scale down and recess an eye/cornea sphere so it sits flush within
+ * the face socket instead of protruding.  MPFB2 eye spheres poke out
+ * by ~0.0006 units; scaling to 88% and pushing back −0.003 in local Z
+ * tucks them in while keeping the iris visible through the eyelid opening.
+ */
+function recessEyeSphere(mesh: THREE.Mesh): void {
+  const geo = mesh.geometry;
+  const pos = geo.attributes.position;
+  if (!pos) return;
+
+  geo.computeBoundingSphere();
+  const center = geo.boundingSphere!.center.clone();
+
+  const scale = 0.88;
+
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    // Scale toward sphere center
+    pos.setXYZ(
+      i,
+      center.x + (x - center.x) * scale,
+      center.y + (y - center.y) * scale,
+      center.z + (z - center.z) * scale - 0.003,
+    );
+  }
+  pos.needsUpdate = true;
+  geo.computeBoundingSphere();
+  geo.computeBoundingBox();
+}
+
 function generateEyeUVs(mesh: THREE.Mesh): void {
   const geo = mesh.geometry;
   const pos = geo.attributes.position;
@@ -116,10 +149,10 @@ export default function AvatarModel({ url }: AvatarModelProps) {
 
     const eyeMat = new THREE.MeshPhysicalMaterial({
       map: eyeTex,
-      roughness: 0.25,
+      roughness: 0.35,
       metalness: 0.0,
-      clearcoat: 0.4,
-      clearcoatRoughness: 0.1,
+      clearcoat: 0.2,
+      clearcoatRoughness: 0.15,
       side: THREE.DoubleSide,
     });
     eyeMatRef.current = eyeMat;
@@ -128,10 +161,10 @@ export default function AvatarModel({ url }: AvatarModelProps) {
       color: 0xffffff,
       roughness: 0.0,
       metalness: 0.0,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.0,
+      clearcoat: 0.3,
+      clearcoatRoughness: 0.02,
       transparent: true,
-      opacity: 0.08,
+      opacity: 0.02,
       depthWrite: false,
       side: THREE.FrontSide,
     });
@@ -153,14 +186,16 @@ export default function AvatarModel({ url }: AvatarModelProps) {
         ? ''
         : ((m.material as THREE.Material)?.name || '');
 
-      // Cornea meshes → transparent gloss
+      // Cornea meshes → transparent gloss, recessed to avoid protrusion
       if (isCorneaName(meshName) || isCorneaName(matName)) {
         m.material = corneaMat;
+        recessEyeSphere(m);
         return;
       }
-      // Eye meshes → iris/pupil texture
+      // Eye meshes → iris/pupil texture, recessed to sit flush in socket
       if (isEyeName(meshName) || isEyeName(matName)) {
         m.material = eyeMat;
+        recessEyeSphere(m);
         // MPFB2 eye meshes share the body UV atlas (tiny ~0.003 region).
         // Replace with frontal spherical UVs so iris texture maps correctly.
         generateEyeUVs(m);

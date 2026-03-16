@@ -86,6 +86,18 @@ export function generateEyeTexture(irisColorHex: string, size = 256): THREE.Data
         }
         data[idx] = sR; data[idx + 1] = sG; data[idx + 2] = sB;
       }
+      // Eyelid shadow: darken top and bottom edges to simulate
+      // the shadow cast by eyelids over the exposed eye surface.
+      const normalizedY = (y - cy) / maxDist; // −1 (top) to +1 (bottom)
+      const absY = Math.abs(normalizedY);
+      if (absY > 0.55) {
+        const shadowT = (absY - 0.55) / 0.45; // 0→1 toward edge
+        const shadow = 1.0 - shadowT * shadowT * 0.5; // quadratic falloff
+        data[idx] = Math.round(data[idx] * shadow);
+        data[idx + 1] = Math.round(data[idx + 1] * shadow);
+        data[idx + 2] = Math.round(data[idx + 2] * shadow);
+      }
+
       data[idx + 3] = 255;
     }
   }
