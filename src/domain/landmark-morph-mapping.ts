@@ -14,11 +14,11 @@ import type { LandmarkProportions } from '@/services/face-landmarks';
 import type { EthnicityMorphs } from './schemas';
 import { SYMMETRIC_FACE_MORPHS } from './constants';
 
-/** Max morph value — slightly higher than LLM-based since landmarks are precise */
-const MAX_MORPH = 0.45;
+/** Max morph value — landmark measurements are precise, so we can push higher */
+const MAX_MORPH = 0.70;
 
-/** Strength multiplier — how aggressively to translate proportions to morphs */
-const STRENGTH = 1.2;
+/** Strength multiplier — amplifies small geometric differences into visible morphs */
+const STRENGTH = 2.0;
 
 interface LandmarkMorphMapping {
   ethnicityMorphs: Partial<EthnicityMorphs>;
@@ -39,11 +39,11 @@ function mapPair(
   strength = STRENGTH
 ) {
   const deviation = value - 0.5;
-  if (deviation < -0.02) {
+  if (deviation < -0.01) {
     // Below average → activate low morph
     morphs[lowMorph] = Math.min(Math.abs(deviation) * 2 * strength, MAX_MORPH);
     morphs[highMorph] = 0;
-  } else if (deviation > 0.02) {
+  } else if (deviation > 0.01) {
     // Above average → activate high morph
     morphs[lowMorph] = 0;
     morphs[highMorph] = Math.min(deviation * 2 * strength, MAX_MORPH);
@@ -127,51 +127,51 @@ export function mapLandmarksToMorphs(
 ): LandmarkMorphMapping {
   const faceDetailMorphs: Record<string, number> = {};
 
-  // === NOSE ===
-  mapPair(proportions.nose_width, 'nose_narrow', 'nose_width', faceDetailMorphs);
-  mapPair(proportions.nose_length, 'nose_short', 'nose_length', faceDetailMorphs);
+  // === NOSE === (high impact — noses vary a lot between faces)
+  mapPair(proportions.nose_width, 'nose_narrow', 'nose_width', faceDetailMorphs, STRENGTH * 1.3);
+  mapPair(proportions.nose_length, 'nose_short', 'nose_length', faceDetailMorphs, STRENGTH * 1.2);
   mapPair(proportions.nose_depth, 'nose_flat', 'nose_depth', faceDetailMorphs);
-  mapPair(proportions.nose_angle, 'nose_down', 'nose_up', faceDetailMorphs, 0.8);
-  mapSingle(proportions.nose_bridge_hump, 'nose_hump', faceDetailMorphs, 0.55, 1.5);
+  mapPair(proportions.nose_angle, 'nose_down', 'nose_up', faceDetailMorphs, STRENGTH * 0.8);
+  mapSingle(proportions.nose_bridge_hump, 'nose_hump', faceDetailMorphs, 0.52, STRENGTH * 1.5);
   // Nostril flare correlates with nose width
-  if (proportions.nose_width > 0.6) {
-    faceDetailMorphs['nose_nostril_wide'] = Math.min((proportions.nose_width - 0.6) * 2.5, MAX_MORPH);
+  if (proportions.nose_width > 0.55) {
+    faceDetailMorphs['nose_nostril_wide'] = Math.min((proportions.nose_width - 0.55) * 3, MAX_MORPH);
   }
 
-  // === JAW & CHIN ===
-  mapPair(proportions.jaw_width, 'jaw_narrow', 'jaw_wide', faceDetailMorphs);
-  mapPair(proportions.chin_prominence, 'chin_recessed', 'chin_prominent', faceDetailMorphs);
-  mapPair(proportions.chin_length, 'chin_short', 'chin_long', faceDetailMorphs);
+  // === JAW & CHIN === (high impact — defines face shape)
+  mapPair(proportions.jaw_width, 'jaw_narrow', 'jaw_wide', faceDetailMorphs, STRENGTH * 1.3);
+  mapPair(proportions.chin_prominence, 'chin_recessed', 'chin_prominent', faceDetailMorphs, STRENGTH * 1.2);
+  mapPair(proportions.chin_length, 'chin_short', 'chin_long', faceDetailMorphs, STRENGTH * 1.2);
   // Chin prognathism from prominence
-  if (proportions.chin_prominence > 0.7) {
-    faceDetailMorphs['chin_prognathism'] = Math.min((proportions.chin_prominence - 0.7) * 3, MAX_MORPH);
+  if (proportions.chin_prominence > 0.6) {
+    faceDetailMorphs['chin_prognathism'] = Math.min((proportions.chin_prominence - 0.6) * 3, MAX_MORPH);
   }
 
-  // === EYES ===
-  mapPair(proportions.eye_size, 'eye_small', 'eye_large', faceDetailMorphs);
+  // === EYES === (medium-high impact)
+  mapPair(proportions.eye_size, 'eye_small', 'eye_large', faceDetailMorphs, STRENGTH * 1.2);
   mapPair(proportions.eye_spacing, 'eye_close_set', 'eye_wide_apart', faceDetailMorphs);
-  mapPair(proportions.eye_height, 'eye_height_narrow', 'eye_height_open', faceDetailMorphs);
+  mapPair(proportions.eye_height, 'eye_height_narrow', 'eye_height_open', faceDetailMorphs, STRENGTH * 1.1);
 
   // === MOUTH & LIPS ===
-  mapPair(proportions.lip_thickness, 'lip_thin', 'lip_thick', faceDetailMorphs);
+  mapPair(proportions.lip_thickness, 'lip_thin', 'lip_thick', faceDetailMorphs, STRENGTH * 1.3);
   mapPair(proportions.mouth_width, 'mouth_narrow', 'mouth_wide', faceDetailMorphs);
   // Lower lip
-  if (proportions.lip_lower_thickness > 0.55) {
+  if (proportions.lip_lower_thickness > 0.52) {
     faceDetailMorphs['lip_lower_thick'] = Math.min(
-      (proportions.lip_lower_thickness - 0.55) * 2.5, MAX_MORPH
+      (proportions.lip_lower_thickness - 0.52) * 3, MAX_MORPH
     );
   }
 
   // === CHEEKS ===
-  mapPair(proportions.cheekbone_prominence, 'cheek_bones_flat', 'cheek_bones_high', faceDetailMorphs);
+  mapPair(proportions.cheekbone_prominence, 'cheek_bones_flat', 'cheek_bones_high', faceDetailMorphs, STRENGTH * 1.2);
   mapPair(proportions.cheek_fullness, 'cheek_thin', 'cheek_full', faceDetailMorphs);
 
-  // === HEAD SHAPE ===
-  mapPair(proportions.face_width, 'head_narrow', 'head_wide', faceDetailMorphs);
-  mapPair(proportions.head_roundness, 'head_square', 'head_round', faceDetailMorphs, 0.8);
+  // === HEAD SHAPE === (high impact — defines overall head)
+  mapPair(proportions.face_width, 'head_narrow', 'head_wide', faceDetailMorphs, STRENGTH * 1.3);
+  mapPair(proportions.head_roundness, 'head_square', 'head_round', faceDetailMorphs);
 
   // === FOREHEAD & BROWS ===
-  mapPair(proportions.forehead_height, 'forehead_short', 'forehead_tall', faceDetailMorphs);
+  mapPair(proportions.forehead_height, 'forehead_short', 'forehead_tall', faceDetailMorphs, STRENGTH * 1.1);
   mapPair(proportions.brow_height, 'brow_low', 'brow_high', faceDetailMorphs);
 
   // Apply symmetric counterparts (left → right)

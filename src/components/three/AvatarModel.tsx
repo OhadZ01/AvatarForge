@@ -264,27 +264,36 @@ export default function AvatarModel({ url }: AvatarModelProps) {
 
   // No per-frame eye material enforcement needed — eyes are part of body mesh
 
-  // ─── Morph Debug (once) ──────────────────────────────
+  // ─── Morph Debug ──────────────────────────────────────
 
-  const morphDebugDoneRef = useRef(false);
+  const morphDebugInitRef = useRef(false);
+  const lastFaceMorphCountRef = useRef(0);
 
   useEffect(() => {
-    if (!avatarMesh?.morphTargetDictionary || morphDebugDoneRef.current) return;
-    morphDebugDoneRef.current = true;
+    if (!avatarMesh?.morphTargetDictionary) return;
     const dict = avatarMesh.morphTargetDictionary;
-    const allNames = Object.keys(dict).sort();
-    console.log(`[AvatarModel] GLB has ${allNames.length} morph targets:`, allNames);
-    // Log which defined morphs are missing
-    const allExpected = [
-      ...Object.keys(ethnicityMorphs),
-      ...Object.keys(faceDetailMorphs),
-      ...(bodyDetailMorphs ? Object.keys(bodyDetailMorphs) : []),
-    ];
-    const missing = allExpected.filter((k) => dict[k] === undefined);
-    if (missing.length > 0) {
-      console.warn(`[AvatarModel] Missing morph targets in GLB:`, missing);
+
+    // Log dictionary once
+    if (!morphDebugInitRef.current) {
+      morphDebugInitRef.current = true;
+      const allNames = Object.keys(dict).sort();
+      console.log(`[AvatarModel] GLB has ${allNames.length} morph targets:`, allNames);
     }
-  }, [avatarMesh, ethnicityMorphs, faceDetailMorphs, bodyDetailMorphs]);
+
+    // Log non-zero face morphs whenever they change
+    const nonZero = Object.entries(faceDetailMorphs).filter(([, v]) => v > 0.01);
+    if (nonZero.length !== lastFaceMorphCountRef.current) {
+      lastFaceMorphCountRef.current = nonZero.length;
+      const matched = nonZero.filter(([k]) => dict[k] !== undefined);
+      const missing = nonZero.filter(([k]) => dict[k] === undefined);
+      console.log(`[AvatarModel] Applying ${matched.length} face morphs:`,
+        matched.map(([k, v]) => `${k}=${(v as number).toFixed(3)}`));
+      if (missing.length > 0) {
+        console.warn(`[AvatarModel] MISSING morph targets (not in GLB):`,
+          missing.map(([k]) => k));
+      }
+    }
+  }, [avatarMesh, faceDetailMorphs]);
 
   // ─── Morph Animation (expressions + face params) ───
 

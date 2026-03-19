@@ -90,6 +90,15 @@ export default function PhotoPanel() {
       setStatus('mapping');
       const mapping = mapLandmarksToMorphs(analysis.proportions, faceColors);
 
+      // Debug: log proportions and resulting morphs
+      console.log('[PhotoPanel] Proportions:', analysis.proportions);
+      console.log('[PhotoPanel] Colors:', faceColors);
+      const nonZeroMorphs = Object.entries(mapping.faceDetailMorphs)
+        .filter(([, v]) => v > 0.01)
+        .sort(([, a], [, b]) => b - a);
+      console.log('[PhotoPanel] Non-zero face morphs:', nonZeroMorphs);
+      console.log('[PhotoPanel] Ethnicity morphs:', mapping.ethnicityMorphs);
+
       // Store results for display
       setProportions(analysis.proportions);
       setExtractedColors(faceColors);
