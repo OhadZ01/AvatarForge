@@ -10,6 +10,7 @@ import { EXPRESSION_PRESETS, ARKIT_BLENDSHAPES } from '@/domain/constants';
 import { generateEyeTexture } from '@/engine/eye-texture';
 import {
   findSkinnedMesh,
+  fixMorphTargetNames,
   applyRelaxedPose,
   bindAssetToAvatarSkeleton,
   disposeSceneGraph,
@@ -116,8 +117,12 @@ export default function AvatarModel({ url }: AvatarModelProps) {
   const hairColorRef = useRef(colors.hair);
   useEffect(() => { hairColorRef.current = colors.hair; }, [colors.hair]);
 
-  // Find the primary skinned mesh
-  const avatarMesh = useMemo(() => findSkinnedMesh(scene), [scene]);
+  // Fix morph target names (MPFB2/Blender puts them at mesh level, not primitive level)
+  // and find the primary skinned mesh
+  const avatarMesh = useMemo(() => {
+    fixMorphTargetNames(scene);
+    return findSkinnedMesh(scene);
+  }, [scene]);
 
   // ─── Eye Materials (once on scene load) ─────────────
 
@@ -258,6 +263,28 @@ export default function AvatarModel({ url }: AvatarModelProps) {
   // ─── Force eye materials (Center may re-parent) ────
 
   // No per-frame eye material enforcement needed — eyes are part of body mesh
+
+  // ─── Morph Debug (once) ──────────────────────────────
+
+  const morphDebugDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (!avatarMesh?.morphTargetDictionary || morphDebugDoneRef.current) return;
+    morphDebugDoneRef.current = true;
+    const dict = avatarMesh.morphTargetDictionary;
+    const allNames = Object.keys(dict).sort();
+    console.log(`[AvatarModel] GLB has ${allNames.length} morph targets:`, allNames);
+    // Log which defined morphs are missing
+    const allExpected = [
+      ...Object.keys(ethnicityMorphs),
+      ...Object.keys(faceDetailMorphs),
+      ...(bodyDetailMorphs ? Object.keys(bodyDetailMorphs) : []),
+    ];
+    const missing = allExpected.filter((k) => dict[k] === undefined);
+    if (missing.length > 0) {
+      console.warn(`[AvatarModel] Missing morph targets in GLB:`, missing);
+    }
+  }, [avatarMesh, ethnicityMorphs, faceDetailMorphs, bodyDetailMorphs]);
 
   // ─── Morph Animation (expressions + face params) ───
 

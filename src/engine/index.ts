@@ -1,6 +1,7 @@
 export { generateEyeTexture } from './eye-texture';
 export {
   findSkinnedMesh,
+  fixMorphTargetNames,
   findBone,
   getBoneWorldPosition,
   bindAssetToAvatarSkeleton,

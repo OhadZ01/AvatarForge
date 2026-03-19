@@ -32,6 +32,66 @@ export function findSkinnedMesh(root: THREE.Object3D): THREE.SkinnedMesh | null 
   return found;
 }
 
+/**
+ * Fix morphTargetDictionary for meshes exported from MPFB2/Blender.
+ *
+ * PROBLEM: Blender's GLTF exporter puts targetNames at the MESH level
+ * (mesh.extras.targetNames) but Three.js GLTFLoader only reads them from
+ * the PRIMITIVE level (primitive.extras.targetNames). When targetNames are
+ * at the mesh level, Three.js creates a numeric dictionary {0: 0, 1: 1, ...}
+ * instead of {nose_width: 0, jaw_wide: 1, ...}.
+ *
+ * SOLUTION: After loading, walk the scene to find meshes with morph targets
+ * and rebuild the dictionary from userData.targetNames (which Three.js does
+ * copy from mesh.extras).
+ */
+export function fixMorphTargetNames(root: THREE.Object3D): void {
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.morphTargetInfluences || mesh.morphTargetInfluences.length === 0) return;
+
+    // Check if dictionary already has string keys (not just numeric)
+    const dict = mesh.morphTargetDictionary;
+    if (dict) {
+      const keys = Object.keys(dict);
+      const hasStringKeys = keys.some((k) => isNaN(Number(k)));
+      if (hasStringKeys) return; // Already has proper names
+    }
+
+    // Look for targetNames in userData (from mesh.extras or parent mesh.extras)
+    let targetNames: string[] | undefined;
+
+    // Check this mesh's userData
+    const ud = mesh.userData as Record<string, unknown>;
+    if (Array.isArray(ud.targetNames)) {
+      targetNames = ud.targetNames as string[];
+    }
+
+    // Check parent's userData (mesh group level in GLTF)
+    if (!targetNames && mesh.parent) {
+      const parentUd = mesh.parent.userData as Record<string, unknown>;
+      if (Array.isArray(parentUd.targetNames)) {
+        targetNames = parentUd.targetNames as string[];
+      }
+    }
+
+    if (!targetNames || targetNames.length === 0) {
+      console.warn(`[fixMorphTargetNames] ${mesh.name}: has ${mesh.morphTargetInfluences.length} morph targets but no targetNames found in userData`);
+      return;
+    }
+
+    // Rebuild morphTargetDictionary with actual names
+    const newDict: Record<string, number> = {};
+    for (let i = 0; i < targetNames.length; i++) {
+      newDict[targetNames[i]] = i;
+    }
+    mesh.morphTargetDictionary = newDict;
+    console.log(
+      `[fixMorphTargetNames] ${mesh.name}: rebuilt dictionary with ${targetNames.length} named morph targets`
+    );
+  });
+}
+
 /** Find a bone by trying multiple candidate names (case-insensitive) */
 export function findBone(
   skeleton: THREE.Skeleton,
