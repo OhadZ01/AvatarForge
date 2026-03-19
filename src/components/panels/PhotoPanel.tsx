@@ -1,31 +1,57 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, Upload, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Camera, Loader2, AlertCircle, CheckCircle2, Scan, SlidersHorizontal } from 'lucide-react';
 import { useAvatarStore } from '@/store';
-import { analyzeFace, checkOllamaStatus } from '@/services/face-analysis';
-import { flameFitFromPhoto, checkFlameBackend } from '@/services/flame-service';
-import { mapFaceToMorphs } from '@/domain/face-parameter-mapping';
-import type { FaceAnalysisResult } from '@/services/face-analysis';
+import { detectFaceLandmarks, extractFaceColors } from '@/services/face-landmarks';
+import { mapLandmarksToMorphs } from '@/domain/landmark-morph-mapping';
+import type { LandmarkProportions } from '@/services/face-landmarks';
 import type { EthnicityMorphs, ColorConfig } from '@/domain/schemas';
 
-type Status = 'idle' | 'checking' | 'analyzing' | 'done' | 'error';
-type AnalysisMethod = 'flame' | 'ollama';
+type Status = 'idle' | 'loading-model' | 'detecting' | 'mapping' | 'done' | 'error';
+
+/** Labels for the proportion keys */
+const PROPORTION_LABELS: Record<string, string> = {
+  face_width: 'Face Width',
+  jaw_width: 'Jaw Width',
+  forehead_height: 'Forehead Height',
+  cheekbone_prominence: 'Cheekbones',
+  chin_length: 'Chin Length',
+  nose_width: 'Nose Width',
+  nose_length: 'Nose Length',
+  nose_depth: 'Nose Depth',
+  nose_angle: 'Nose Angle',
+  eye_spacing: 'Eye Spacing',
+  eye_size: 'Eye Size',
+  eye_height: 'Eye Openness',
+  lip_thickness: 'Lip Fullness',
+  lip_lower_thickness: 'Lower Lip',
+  mouth_width: 'Mouth Width',
+  head_roundness: 'Head Roundness',
+  brow_height: 'Brow Height',
+  cheek_fullness: 'Cheek Fullness',
+  chin_prominence: 'Chin Prominence',
+  nose_bridge_hump: 'Nose Bridge',
+};
 
 export default function PhotoPanel() {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [result, setResult] = useState<FaceAnalysisResult | null>(null);
-  const [method, setMethod] = useState<AnalysisMethod | null>(null);
+  const [proportions, setProportions] = useState<LandmarkProportions | null>(null);
+  const [colors, setExtractedColors] = useState<{ skin: string; eye: string; hair: string } | null>(null);
+  const [gender, setGender] = useState<number | null>(null);
+  const [confidence, setConfidence] = useState<number>(0);
+  const [showDetails, setShowDetails] = useState(false);
+  const [landmarkCount, setLandmarkCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const setEthnicityMorphs = useAvatarStore((s) => s.setEthnicityMorphs);
   const setFaceDetailMorphs = useAvatarStore((s) => s.setFaceDetailMorphs);
   const setBodyDetailMorphs = useAvatarStore((s) => s.setBodyDetailMorphs);
-  const setColors = useAvatarStore((s) => s.setColors);
+  const setStoreColors = useAvatarStore((s) => s.setColors);
 
-  // Revoke blob URL on cleanup or when preview changes to prevent memory leaks
+  // Revoke blob URL on cleanup
   useEffect(() => {
     return () => {
       if (preview) URL.revokeObjectURL(preview);
@@ -34,10 +60,12 @@ export default function PhotoPanel() {
 
   const handleFileSelect = useCallback(async (file: File) => {
     setError(null);
-    setResult(null);
-    setMethod(null);
+    setProportions(null);
+    setExtractedColors(null);
+    setGender(null);
+    setShowDetails(false);
 
-    // Revoke previous blob URL before creating a new one
+    // Revoke previous blob URL
     setPreview((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return null;
@@ -45,90 +73,50 @@ export default function PhotoPanel() {
     const url = URL.createObjectURL(file);
     setPreview(url);
 
-    setStatus('checking');
-
-    // Try FLAME backend first (more accurate)
-    const flameAvailable = await checkFlameBackend();
-
-    if (flameAvailable) {
-      setStatus('analyzing');
-      setMethod('flame');
-      try {
-        const flameResult = await flameFitFromPhoto(file);
-        // Apply FLAME results directly to avatar
-        if (flameResult.ethnicityMorphs) {
-          setEthnicityMorphs(flameResult.ethnicityMorphs as Partial<EthnicityMorphs>);
-        }
-        if (flameResult.faceDetailMorphs) {
-          setFaceDetailMorphs(flameResult.faceDetailMorphs);
-        }
-        if (flameResult.bodyDetailMorphs) {
-          setBodyDetailMorphs(flameResult.bodyDetailMorphs);
-        }
-        if (flameResult.colors) {
-          const validColors: Partial<ColorConfig> = {};
-          if (flameResult.colors.skin) validColors.skin = flameResult.colors.skin;
-          if (flameResult.colors.hair) validColors.hair = flameResult.colors.hair;
-          if (flameResult.colors.eye) validColors.eye = flameResult.colors.eye;
-          setColors(validColors);
-        }
-        // Create a pseudo-result for display
-        const genderValue = typeof flameResult.ethnicityMorphs?.masculine === 'number'
-          ? flameResult.ethnicityMorphs.masculine
-          : 0.5;
-        setResult({
-          ethnicity: { african: 0, asian: 0, caucasian: 0 },
-          gender: genderValue,
-          age: 30,
-          proportions: {
-            face_width: 0.5, jaw_width: 0.5, forehead_height: 0.5,
-            cheekbone_prominence: 0.5, chin_length: 0.5, nose_width: 0.5,
-            nose_length: 0.5, eye_spacing: 0.5, eye_size: 0.5, lip_thickness: 0.5,
-          },
-          colors: {
-            skin: flameResult.colors?.skin || '#c8956c',
-            eye: flameResult.colors?.eye || '#5b7553',
-            hair: flameResult.colors?.hair || '#3d2314',
-          },
-          confidence: flameResult.confidence || 0.8,
-        });
-        setStatus('done');
-        return;
-      } catch (err) {
-        console.warn('[PhotoPanel] FLAME failed, falling back to Ollama:', err);
-      }
-    }
-
-    // Fallback: Ollama vision
-    setMethod('ollama');
-    const ollamaStatus = await checkOllamaStatus();
-    if (!ollamaStatus.available) {
-      setError('Neither FLAME backend nor Ollama is running. Start Ollama with: ollama serve');
-      setStatus('error');
-      return;
-    }
-    if (!ollamaStatus.hasModel) {
-      setError('Vision model not found. Run: ollama pull llama3.2-vision');
-      setStatus('error');
-      return;
-    }
-
-    setStatus('analyzing');
     try {
-      const analysis = await analyzeFace(file);
-      setResult(analysis);
-      setStatus('done');
+      // Step 1: Load MediaPipe model (first time only, cached after)
+      setStatus('loading-model');
 
-      // Apply to avatar — ethnicity, face details, and colors
-      const mapping = mapFaceToMorphs(analysis);
+      // Step 2: Detect face landmarks
+      setStatus('detecting');
+      const analysis = await detectFaceLandmarks(file);
+      setLandmarkCount(analysis.landmarks.length);
+      setConfidence(analysis.confidence);
+
+      // Step 3: Extract colors from photo
+      const faceColors = await extractFaceColors(file, analysis.landmarks);
+
+      // Step 4: Map to morphs
+      setStatus('mapping');
+      const mapping = mapLandmarksToMorphs(analysis.proportions, faceColors);
+
+      // Store results for display
+      setProportions(analysis.proportions);
+      setExtractedColors(faceColors);
+
+      // Compute gender from mapping
+      const genderValue = mapping.ethnicityMorphs.masculine ?? 0.5;
+      setGender(genderValue);
+
+      // Apply to avatar
       setEthnicityMorphs(mapping.ethnicityMorphs as Partial<EthnicityMorphs>);
       setFaceDetailMorphs(mapping.faceDetailMorphs);
-      setColors(mapping.colors);
+      if (Object.keys(mapping.bodyDetailMorphs).length > 0) {
+        setBodyDetailMorphs(mapping.bodyDetailMorphs);
+      }
+      const validColors: Partial<ColorConfig> = {};
+      if (faceColors.skin) validColors.skin = faceColors.skin;
+      if (faceColors.hair) validColors.hair = faceColors.hair;
+      if (faceColors.eye) validColors.eye = faceColors.eye;
+      setStoreColors(validColors);
+
+      setStatus('done');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Analysis failed');
+      console.error('[PhotoPanel] Face detection failed:', err);
+      setError(err instanceof Error ? err.message : 'Face detection failed');
       setStatus('error');
     }
-  }, [setEthnicityMorphs, setFaceDetailMorphs, setBodyDetailMorphs, setColors]);
+  }, [setEthnicityMorphs, setFaceDetailMorphs, setBodyDetailMorphs, setStoreColors]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -142,11 +130,45 @@ export default function PhotoPanel() {
     e.preventDefault();
   }, []);
 
+  /** Render a proportion bar */
+  const ProportionBar = ({ label, value }: { label: string; value: number }) => {
+    const pct = Math.round(value * 100);
+    const deviation = value - 0.5;
+    const isLow = deviation < -0.05;
+    const isHigh = deviation > 0.05;
+    return (
+      <div className="flex items-center gap-2 text-[10px]">
+        <span className="text-surface-400 w-20 truncate" title={label}>{label}</span>
+        <div className="flex-1 h-1.5 bg-surface-700 rounded-full relative overflow-hidden">
+          {/* Center marker */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-surface-500 z-10" />
+          {/* Value bar */}
+          <div
+            className={`absolute top-0 bottom-0 rounded-full transition-all ${
+              isLow ? 'bg-blue-400/70' : isHigh ? 'bg-amber-400/70' : 'bg-green-400/50'
+            }`}
+            style={{
+              left: deviation < 0 ? `${pct}%` : '50%',
+              width: `${Math.abs(deviation) * 100}%`,
+            }}
+          />
+        </div>
+        <span className={`w-8 text-right font-mono ${
+          isLow ? 'text-blue-400' : isHigh ? 'text-amber-400' : 'text-surface-500'
+        }`}>
+          {pct}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-3 px-3">
       <div>
         <h3 className="text-sm font-semibold text-surface-200">Photo to Avatar</h3>
-        <p className="text-xs text-surface-500 mt-0.5">Upload a face photo to generate your avatar</p>
+        <p className="text-xs text-surface-500 mt-0.5">
+          Upload a face photo — AI detects 478 face landmarks instantly
+        </p>
       </div>
 
       {/* Upload area */}
@@ -184,18 +206,25 @@ export default function PhotoPanel() {
         />
       </div>
 
-      {/* Status */}
-      {status === 'checking' && (
+      {/* Status messages */}
+      {status === 'loading-model' && (
         <div className="flex items-center gap-2 text-xs text-surface-400">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          Checking analysis backends...
+          Loading face detection model...
         </div>
       )}
 
-      {status === 'analyzing' && (
+      {status === 'detecting' && (
         <div className="flex items-center gap-2 text-xs text-accent">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          {method === 'flame' ? 'FLAME fitting face...' : 'Analyzing face features...'}
+          <Scan className="w-3.5 h-3.5 animate-pulse" />
+          Detecting 478 face landmarks...
+        </div>
+      )}
+
+      {status === 'mapping' && (
+        <div className="flex items-center gap-2 text-xs text-accent">
+          <SlidersHorizontal className="w-3.5 h-3.5 animate-pulse" />
+          Mapping face geometry to avatar morphs...
         </div>
       )}
 
@@ -206,54 +235,79 @@ export default function PhotoPanel() {
         </div>
       )}
 
-      {status === 'done' && result && (
+      {status === 'done' && proportions && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 text-xs text-green-400">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Analysis complete{method === 'flame' ? ' (FLAME)' : ''} — avatar updated!
+            Face detected — {landmarkCount} landmarks mapped to avatar!
           </div>
 
-          {/* Results summary */}
+          {/* Summary */}
           <div className="bg-surface-800/50 rounded-xl p-3 text-xs space-y-1.5">
             <div className="flex justify-between">
-              <span className="text-surface-400">Age</span>
-              <span className="text-surface-200">{result.age}</span>
+              <span className="text-surface-400">Method</span>
+              <span className="text-surface-200">MediaPipe Face Mesh (client-side)</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-surface-400">Landmarks</span>
+              <span className="text-surface-200">{landmarkCount} points</span>
             </div>
             <div className="flex justify-between">
               <span className="text-surface-400">Gender</span>
               <span className="text-surface-200">
-                {result.gender < 0.3 ? 'Feminine' : result.gender > 0.7 ? 'Masculine' : 'Androgynous'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-surface-400">Ethnicity</span>
-              <span className="text-surface-200">
-                {[
-                  result.ethnicity.african > 0.3 && `African ${(result.ethnicity.african * 100).toFixed(0)}%`,
-                  result.ethnicity.asian > 0.3 && `Asian ${(result.ethnicity.asian * 100).toFixed(0)}%`,
-                  result.ethnicity.caucasian > 0.3 && `Caucasian ${(result.ethnicity.caucasian * 100).toFixed(0)}%`,
-                ].filter(Boolean).join(', ') || 'Mixed'}
+                {gender !== null && (
+                  gender < 0.3 ? 'Feminine' : gender > 0.7 ? 'Masculine' : 'Androgynous'
+                )}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-surface-400">Confidence</span>
-              <span className="text-surface-200">{(result.confidence * 100).toFixed(0)}%</span>
+              <span className="text-surface-200">{Math.round(confidence * 100)}%</span>
             </div>
-            <div className="flex items-center gap-2 pt-1">
-              <span className="text-surface-400">Colors</span>
-              <div className="flex gap-1">
-                <div className="w-4 h-4 rounded-full border border-surface-600" style={{ backgroundColor: result.colors.skin }} title="Skin" />
-                <div className="w-4 h-4 rounded-full border border-surface-600" style={{ backgroundColor: result.colors.eye }} title="Eye" />
-                <div className="w-4 h-4 rounded-full border border-surface-600" style={{ backgroundColor: result.colors.hair }} title="Hair" />
+
+            {/* Colors */}
+            {colors && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-surface-400">Colors</span>
+                <div className="flex gap-1">
+                  <div className="w-4 h-4 rounded-full border border-surface-600" style={{ backgroundColor: colors.skin }} title={`Skin: ${colors.skin}`} />
+                  <div className="w-4 h-4 rounded-full border border-surface-600" style={{ backgroundColor: colors.eye }} title={`Eye: ${colors.eye}`} />
+                  <div className="w-4 h-4 rounded-full border border-surface-600" style={{ backgroundColor: colors.hair }} title={`Hair: ${colors.hair}`} />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Re-upload button */}
+          {/* Proportion details (expandable) */}
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="flex items-center justify-center gap-1 text-[10px] text-surface-500 hover:text-surface-300 transition-colors py-1"
+          >
+            <SlidersHorizontal className="w-3 h-3" />
+            {showDetails ? 'Hide' : 'Show'} face measurements ({Object.keys(proportions).length})
+          </button>
+
+          {showDetails && (
+            <div className="bg-surface-800/30 rounded-xl p-2.5 space-y-1">
+              {Object.entries(proportions).map(([key, value]) => (
+                <ProportionBar
+                  key={key}
+                  label={PROPORTION_LABELS[key] || key}
+                  value={value}
+                />
+              ))}
+              <p className="text-[9px] text-surface-600 pt-1 text-center">
+                50 = average | Blue = below avg | Amber = above avg
+              </p>
+            </div>
+          )}
+
+          {/* Re-upload */}
           <button
             onClick={() => {
               setPreview(null);
-              setResult(null);
+              setProportions(null);
+              setExtractedColors(null);
               setStatus('idle');
               fileInputRef.current?.click();
             }}
