@@ -122,7 +122,7 @@ export default function BodyPanel() {
                           value={faceDetailMorphs[key] || 0}
                           onChange={(v) => handleFaceDetailMorph(key, v)}
                           min={0}
-                          max={0.5}
+                          max={1}
                         />
                       ))}
                     </div>
