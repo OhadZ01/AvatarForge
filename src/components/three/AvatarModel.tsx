@@ -236,12 +236,20 @@ export default function AvatarModel({ url }: AvatarModelProps) {
   useEffect(() => {
     if (!avatarMesh) return;
     // Apply skin color — handle multi-material (Skin + Eyes on same mesh)
+    // The MPFB2 model has a baked diffuse texture on the skin material.
+    // color.set() only TINTS (multiplies) the texture, producing minimal
+    // visible change. We null the diffuse map so color is applied directly,
+    // while keeping normalMap/roughnessMap for surface detail.
     const materials = Array.isArray(avatarMesh.material)
       ? avatarMesh.material
       : [avatarMesh.material];
     for (const mat of materials) {
       const stdMat = mat as THREE.MeshStandardMaterial;
       if (stdMat?.color && stdMat.name !== 'Eyes' && stdMat.name !== 'eyes') {
+        if (stdMat.map) {
+          stdMat.map.dispose();
+          stdMat.map = null;
+        }
         stdMat.color.set(new THREE.Color(colors.skin));
         stdMat.needsUpdate = true;
       }
