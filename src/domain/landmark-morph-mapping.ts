@@ -15,10 +15,10 @@ import type { EthnicityMorphs } from './schemas';
 import { SYMMETRIC_FACE_MORPHS } from './constants';
 
 /** Max morph value — landmark measurements are precise, so we can push higher */
-const MAX_MORPH = 0.70;
+const MAX_MORPH = 0.75;
 
 /** Strength multiplier — amplifies small geometric differences into visible morphs */
-const STRENGTH = 2.0;
+const STRENGTH = 2.5;
 
 interface LandmarkMorphMapping {
   ethnicityMorphs: Partial<EthnicityMorphs>;
@@ -199,6 +199,18 @@ export function mapLandmarksToMorphs(
     asian_female: 0.33 * fem,
     asian_male: 0.33 * masc,
   };
+
+  // Log the results for debugging
+  const nonZero = Object.entries(faceDetailMorphs)
+    .filter(([, v]) => v > 0.001)
+    .sort(([, a], [, b]) => b - a);
+  console.log(`[LandmarkMorphMapping] Generated ${nonZero.length} non-zero face morphs:`,
+    nonZero.map(([k, v]) => `${k}=${v.toFixed(3)}`));
+  console.log(`[LandmarkMorphMapping] Gender estimate: ${gender.toFixed(3)} (${gender > 0.6 ? 'masculine' : gender < 0.4 ? 'feminine' : 'androgynous'})`);
+
+  if (nonZero.length === 0) {
+    console.warn('[LandmarkMorphMapping] WARNING: All face morphs are zero! Proportions may be too close to 0.5.');
+  }
 
   return {
     ethnicityMorphs,

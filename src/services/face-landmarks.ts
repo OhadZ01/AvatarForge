@@ -274,29 +274,48 @@ function computeProportions(landmarks: { x: number; y: number; z: number }[]): L
   const mouthZ = (landmarks[LM.MOUTH_LEFT].z + landmarks[LM.MOUTH_RIGHT].z) / 2;
   const chinProminence = (chinZ - mouthZ) / faceWidth;
 
-  // Normalize all ratios to 0-1 scale (0.5 = average)
-  return {
-    face_width:            normalizeRatio(faceWidthRatio, 0.78, 0.15),
-    jaw_width:             normalizeRatio(jawWidthRatio, 0.85, 0.15),
-    forehead_height:       normalizeRatio(foreheadHeight, 0.33, 0.10),
-    cheekbone_prominence:  normalizeRatio(cheekboneRatio, 0.95, 0.10),
-    chin_length:           normalizeRatio(chinLength, 0.20, 0.08),
-    nose_width:            normalizeRatio(noseWidthRatio, 0.25, 0.08),
-    nose_length:           normalizeRatio(noseLengthRatio, 0.30, 0.08),
-    nose_depth:            normalizeRatio(noseDepthRatio, 0.12, 0.06),
-    nose_angle:            normalizeRatio(noseAngle, 1.1, 0.4),
-    eye_spacing:           normalizeRatio(eyeSpacingRatio, 0.28, 0.06),
-    eye_size:              normalizeRatio(eyeSizeRatio, 0.22, 0.05),
-    eye_height:            normalizeRatio(eyeHeightRatio, 0.35, 0.12),
-    lip_thickness:         normalizeRatio(totalLipThickness, 0.085, 0.04),
-    lip_lower_thickness:   normalizeRatio(lowerLipRatio, 0.05, 0.025),
-    mouth_width:           normalizeRatio(mouthWidthRatio, 0.38, 0.08),
-    head_roundness:        normalizeRatio(headRoundness, 0.78, 0.12),
-    brow_height:           normalizeRatio(browHeightRatio, 1.5, 0.6),
-    cheek_fullness:        normalizeRatio(cheekFullnessRatio, 0.20, 0.06),
-    chin_prominence:       normalizeRatio(chinProminence, -0.02, 0.04),
-    nose_bridge_hump:      normalizeRatio(noseHump, 0, 0.03),
+  // Log raw ratios for debugging
+  const rawRatios = {
+    faceWidthRatio, jawWidthRatio, foreheadHeight, cheekboneRatio,
+    chinLength, noseWidthRatio, noseLengthRatio, noseDepthRatio,
+    noseAngle, eyeSpacingRatio, eyeSizeRatio, eyeHeightRatio,
+    totalLipThickness, lowerLipRatio, mouthWidthRatio, headRoundness,
+    browHeightRatio, cheekFullnessRatio, chinProminence, noseHump,
   };
+  console.log('[FaceLandmarks] Raw ratios:', rawRatios);
+
+  // Normalize all ratios to 0-1 scale (0.5 = average)
+  // Ranges are tightened to make proportions more sensitive to individual differences
+  const proportions = {
+    face_width:            normalizeRatio(faceWidthRatio, 0.78, 0.10),
+    jaw_width:             normalizeRatio(jawWidthRatio, 0.85, 0.10),
+    forehead_height:       normalizeRatio(foreheadHeight, 0.33, 0.08),
+    cheekbone_prominence:  normalizeRatio(cheekboneRatio, 0.95, 0.08),
+    chin_length:           normalizeRatio(chinLength, 0.20, 0.06),
+    nose_width:            normalizeRatio(noseWidthRatio, 0.25, 0.06),
+    nose_length:           normalizeRatio(noseLengthRatio, 0.30, 0.06),
+    nose_depth:            normalizeRatio(noseDepthRatio, 0.12, 0.05),
+    nose_angle:            normalizeRatio(noseAngle, 1.1, 0.3),
+    eye_spacing:           normalizeRatio(eyeSpacingRatio, 0.28, 0.05),
+    eye_size:              normalizeRatio(eyeSizeRatio, 0.22, 0.04),
+    eye_height:            normalizeRatio(eyeHeightRatio, 0.35, 0.10),
+    lip_thickness:         normalizeRatio(totalLipThickness, 0.085, 0.03),
+    lip_lower_thickness:   normalizeRatio(lowerLipRatio, 0.05, 0.02),
+    mouth_width:           normalizeRatio(mouthWidthRatio, 0.38, 0.06),
+    head_roundness:        normalizeRatio(headRoundness, 0.78, 0.08),
+    brow_height:           normalizeRatio(browHeightRatio, 1.5, 0.4),
+    cheek_fullness:        normalizeRatio(cheekFullnessRatio, 0.20, 0.05),
+    chin_prominence:       normalizeRatio(chinProminence, -0.02, 0.03),
+    nose_bridge_hump:      normalizeRatio(noseHump, 0, 0.02),
+  };
+
+  console.log('[FaceLandmarks] Normalized proportions:', proportions);
+  const deviations = Object.entries(proportions)
+    .map(([k, v]) => ({ key: k, value: v, deviation: Math.abs(v - 0.5) }))
+    .sort((a, b) => b.deviation - a.deviation);
+  console.log('[FaceLandmarks] Top deviations from average:', deviations.slice(0, 8).map(d => `${d.key}: ${d.value.toFixed(3)}`));
+
+  return proportions;
 }
 
 /**
